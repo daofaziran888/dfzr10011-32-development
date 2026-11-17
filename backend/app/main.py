@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routers import ROUTERS
+from app.services.verify import VerifyService
 from app.store import store
 
 app = FastAPI(title="分布式采集调度引擎", version="1.0.0")
@@ -24,6 +25,9 @@ app.add_middleware(
 
 for module in ROUTERS:
     app.include_router(module.router)
+
+# 为已获批的校验版本补齐放行结果数据，保证明细与状态对齐
+VerifyService().bootstrap_release_results()
 
 
 @app.get("/api/health")

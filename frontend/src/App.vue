@@ -11,7 +11,15 @@
     <main class="app-main">
       <header class="app-head">
         <span class="head-desc">面向大规模数据采集团队的分布式采集调度引擎。覆盖采集节点集群管理、任务分片调度、结果聚合归并、节点健康监控、采集流量均衡、断点续采恢复与全局采集看板的完整分布式采集链路。</span>
-        <span class="head-user">当前值班：{{ store.operator }} · {{ store.shiftLabel }}</span>
+        <span class="head-user">
+          当前值班：{{ store.operator }} · {{ store.shiftLabel }}
+          <select class="head-select" :value="store.team" @change="store.setTeam(($event.target as HTMLSelectElement).value)">
+            <option v-for="team in store.teams" :key="team" :value="team">{{ team }}</option>
+          </select>
+          <select class="head-select" :value="store.role" @change="store.setRole(($event.target as HTMLSelectElement).value)">
+            <option v-for="role in store.roles" :key="role" :value="role">{{ role }}</option>
+          </select>
+        </span>
       </header>
       <RouterView />
     </main>

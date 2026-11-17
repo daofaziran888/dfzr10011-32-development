@@ -8,6 +8,18 @@ from typing import Any
 
 from app.seed import SEED_ROWS
 
+# 内部支撑表：校验归属、版本审批与放行结果都落在这些表里，
+# 不作为独立业务模块出现在运营概览上。
+HIDDEN_TABLES = {
+    "crawlplan",
+    "plan_handover",
+    "plan_detail",
+    "verify_version",
+    "verify_approval",
+    "verify_release",
+    "merge_release",
+}
+
 
 class Store:
     def __init__(self) -> None:
@@ -16,7 +28,7 @@ class Store:
         }
 
     def module_names(self) -> list[str]:
-        return sorted(self._tables)
+        return sorted(name for name in self._tables if name not in HIDDEN_TABLES)
 
     def rows(self, module: str) -> list[dict[str, Any]]:
         return self._tables.setdefault(module, [])

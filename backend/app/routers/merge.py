@@ -1,4 +1,4 @@
-"""结果聚合归并接口：维护聚合任务，覆盖启动归并、重试归并、归档任务等动作。"""
+"""结果聚合归并接口：维护聚合任务，覆盖启动归并、重试归并、归档任务与生成放行清单等动作。"""
 from __future__ import annotations
 
 from typing import Any
@@ -14,6 +14,33 @@ service = MergeService()
 
 LIST_FIELDS = ["任务编号", "采集计划", "分片总数", "已归并数", "归并策略", "输出路径", "数据总量", "任务状态"]
 STATUSES = ["待归并", "归并中", "已完成", "归并失败"]
+
+
+@router.get("/release-list", response_model=PageResult[dict])
+def release_list(
+    plan: str | None = Query(default=None, description="按采集计划过滤"),
+    page: int = 1,
+    size: int = 20,
+) -> PageResult[dict]:
+    """结果聚合放行清单：可核对规则版本、计划所属团队、审批团队、交接时间与原审批撤回依据。"""
+    if size > 200:
+        raise HTTPException(status_code=400, detail="每页最多 200 条，请缩小分页范围")
+    items, total = service.list_release_list(plan=plan, page=page, size=size)
+    return PageResult(items=items, total=total, page=page, size=size)
+
+
+@router.get("/verify-review")
+def verify_review() -> dict[str, Any]:
+    """校验规则归属复核清单：由校验放行结果数据归并而成，供归并下游与其他业务入口核对。"""
+    items = service.verify_review()
+    return {"items": items, "total": len(items)}
+
+
+@router.get("/export")
+def export_entries() -> dict[str, Any]:
+    """导出结果聚合归并清单：返回当前过滤条件下的全量数据。"""
+    items, total = service.list_entries(page=1, size=10000)
+    return {"module": "merge", "total": total, "items": items}
 
 
 @router.get("", response_model=PageResult[dict])
@@ -50,16 +77,9 @@ def create_entry(payload: EntryPayload) -> ActionResult:
 
 @router.post("/{entry_id}/actions", response_model=ActionResult)
 def run_action(entry_id: int, payload: EntryPayload) -> ActionResult:
-    """对单条聚合任务执行启动归并、重试归并、归档任务；不允许的动作会被拦下并说明原因。"""
+    """对单条聚合任务执行启动归并、重试归并、归档任务、生成放行清单；不允许的动作会被拦下并说明原因。"""
     action = str(payload.values.get("action") or "").strip()
-    entry, message = service.run_action(entry_id, action)
+    entry, message = service.run_action(entry_id, action, payload.values)
     if entry is None:
         return ActionResult(ok=False, message=message)
     return ActionResult(ok=True, message=message, entry=entry)
-
-
-@router.get("/export")
-def export_entries() -> dict[str, Any]:
-    """导出结果聚合归并清单：返回当前过滤条件下的全量数据。"""
-    items, total = service.list_entries(page=1, size=10000)
-    return {"module": "merge", "total": total, "items": items}

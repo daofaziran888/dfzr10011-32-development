@@ -12,6 +12,20 @@
         <strong class="stat-value">{{ card.value }}</strong>
       </article>
     </div>
+    <div class="link-row">
+      <RouterLink class="link-card" to="/verify?tab=release">
+        <span class="stat-label">校验放行结果数据（采集结果校验）</span>
+        <strong class="stat-value">{{ linkage.releaseTotal }}</strong>
+      </RouterLink>
+      <RouterLink class="link-card" to="/merge?tab=review">
+        <span class="stat-label">校验规则归属复核清单（归并下游）</span>
+        <strong class="stat-value">{{ linkage.reviewTotal }}</strong>
+      </RouterLink>
+      <RouterLink class="link-card" to="/merge?tab=release">
+        <span class="stat-label">结果聚合放行清单（归并下游）</span>
+        <strong class="stat-value">{{ linkage.mergeReleaseTotal }}</strong>
+      </RouterLink>
+    </div>
     <table class="data-table">
       <thead>
         <tr><th>业务模块</th><th>今日新增</th><th>待处理</th><th>异常量</th></tr>
@@ -40,8 +54,27 @@ type Overview = {
 
 const cards = ref<Overview['cards']>([])
 const moduleRows = ref<Overview['modules']>([])
+const linkage = ref({ releaseTotal: 0, reviewTotal: 0, mergeReleaseTotal: 0 })
+
+async function reloadLinkage() {
+  try {
+    const [release, review, mergeRelease] = await Promise.all([
+      fetchJson<{ total: number }>('/api/verify/release?size=1'),
+      fetchJson<{ total: number }>('/api/merge/verify-review'),
+      fetchJson<{ total: number }>('/api/merge/release-list?size=1'),
+    ])
+    linkage.value = {
+      releaseTotal: release.total ?? 0,
+      reviewTotal: review.total ?? 0,
+      mergeReleaseTotal: mergeRelease.total ?? 0,
+    }
+  } catch {
+    linkage.value = { releaseTotal: 0, reviewTotal: 0, mergeReleaseTotal: 0 }
+  }
+}
 
 onMounted(async () => {
+  void reloadLinkage()
   try {
     const payload = await fetchJson<Overview>('/api/overview')
     cards.value = payload.cards
